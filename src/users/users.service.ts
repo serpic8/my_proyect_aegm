@@ -2,14 +2,23 @@ import { Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class UsersService {
 
   constructor(private prisma: PrismaService) {}
 
-  create(createUserDto: CreateUserDto) {
-    return this.prisma.user.create({data: createUserDto});
+  async create(createUserDto: CreateUserDto) {
+    // Encriptar la contraseña antes de guardarla en la base de datos
+    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+
+    return this.prisma.user.create({
+      data: {
+        ...createUserDto,
+        password: hashedPassword,
+      },
+    });
   }
 
   findAll() {
@@ -20,10 +29,15 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
+  async update(id: number, updateUserDto: UpdateUserDto) {
+    const data = { ...updateUserDto };
+    if (data.password) {
+      data.password = await bcrypt.hash(data.password, 10);
+    }
+
     return this.prisma.user.update({
       where: { id },
-      data: updateUserDto,
+      data,
     });
   }
 
